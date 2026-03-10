@@ -1,8 +1,10 @@
 const express = require('express');
-// Use asm.js build of sql.js — no WASM file dependency, works on all serverless platforms
-const initSqlJs = require('sql.js/dist/sql-asm.js');
 const path = require('path');
 const fs = require('fs');
+
+// Use the pure-JS asm.js build — zero WASM file dependency
+const initSqlJs = require('sql.js/dist/sql-asm.js');
+console.log('[boot] sql.js loaded via sql-asm.js (pure JS, no WASM)');
 
 const app = express();
 const PORT = 3000;

@@ -540,9 +540,20 @@ ${urls}</urlset>`;
     res.send(xml);
   });
 
-  app.listen(PORT, () => {
-    console.log('Server running at http://localhost:' + PORT);
+  // Global error handler — logs to console for Vercel dashboard visibility
+  app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err.stack || err);
+    res.status(500).json({ error: 'Internal Server Error' });
   });
+
+  // Only listen when running directly (not when imported by Vercel)
+  if (!IS_VERCEL) {
+    app.listen(PORT, () => {
+      console.log('Server running at http://localhost:' + PORT);
+    });
+  }
 }
 
-start().catch(err => { console.error(err); process.exit(1); });
+start().catch(err => { console.error('Startup error:', err); process.exit(1); });
+
+module.exports = app;

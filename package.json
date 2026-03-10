@@ -1,0 +1,14 @@
+{
+  "name": "bible-site",
+  "version": "1.0.0",
+  "description": "A calming scripture website for people experiencing anxiety and stress",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node data/seed.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "sql.js": "^1.11.0"
+  }
+}

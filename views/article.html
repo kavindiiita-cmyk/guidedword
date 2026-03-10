@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{meta_title}}</title>
+  <meta name="description" content="{{meta_description}}">
+  <link rel="canonical" href="{{canonical_url}}">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="{{meta_title}}">
+  <meta property="og:description" content="{{meta_description}}">
+  <meta property="og:url" content="{{canonical_url}}">
+  <meta property="og:image" content="{{base_url}}{{hero_image}}">
+  <meta property="og:site_name" content="Bible Encouragement">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{meta_title}}">
+  <meta name="twitter:description" content="{{meta_description}}">
+  <meta name="twitter:image" content="{{base_url}}{{hero_image}}">
+
+  <link rel="stylesheet" href="/styles.css?v={{cache_bust}}">
+
+  <!-- Structured Data: Article -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "{{meta_title}}",
+    "description": "{{meta_description}}",
+    "image": "{{base_url}}{{hero_image}}",
+    "author": { "@type": "Organization", "name": "Bible Encouragement" },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Bible Encouragement",
+      "logo": { "@type": "ImageObject", "url": "{{base_url}}/images/og-default.jpg" }
+    },
+    "datePublished": "2026-01-01",
+    "mainEntityOfPage": "{{canonical_url}}"
+  }
+  </script>
+  <!-- Structured Data: Breadcrumb -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "{{base_url}}/" },
+      { "@type": "ListItem", "position": 2, "name": "{{category_title}}", "item": "{{category_url}}" },
+      { "@type": "ListItem", "position": 3, "name": "{{meta_title}}" }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="/" class="logo">Scripture for Anxiety</a>
+    </div>
+  </header>
+
+  <main class="container article-page">
+    <nav class="pill-nav" aria-label="Topics">
+      {{nav_pills}}
+    </nav>
+
+    <div class="hero-image">
+      <img src="{{hero_image}}" alt="Bible verse illustration for {{verse_reference}}" loading="lazy" width="1600" height="900">
+      <div class="hero-overlay">
+        <span class="hero-tag">{{verse_reference}}</span>
+      </div>
+    </div>
+
+    <article class="article-content">
+      <h1 class="article-title">{{title}}</h1>
+      <p class="article-subtitle">A moment of scripture and reflection for your heart today.</p>
+
+      <section class="section-empathy">
+        <h2>You're Not Alone in This</h2>
+        <p>{{story_context}}</p>
+      </section>
+
+      <section class="section-verse">
+        <blockquote class="verse">
+          <p class="verse-text">"{{verse_text}}"</p>
+          <p class="verse-ref">— {{verse_reference}}</p>
+        </blockquote>
+      </section>
+
+      <section class="section-reflection">
+        <h2>A Gentle Reflection</h2>
+        <p>{{reflection_text}}</p>
+      </section>
+
+      <section class="section-quiz">
+        <h2>Reflect &amp; Remember</h2>
+        <p class="quiz-question">{{quiz_question}}</p>
+        <div class="quiz-options" data-correct="{{correct_option}}">
+          <button class="quiz-btn" data-option="A">A. {{option_a}}</button>
+          <button class="quiz-btn" data-option="B">B. {{option_b}}</button>
+          <button class="quiz-btn" data-option="C">C. {{option_c}}</button>
+          <button class="quiz-btn" data-option="D">D. {{option_d}}</button>
+        </div>
+        <div class="quiz-result" hidden>
+          <p class="quiz-result-text"></p>
+          <p class="quiz-explanation">{{quiz_explanation}}</p>
+        </div>
+      </section>
+
+      <section class="section-related">
+        <h2>Continue Reading</h2>
+        <div class="related-grid">
+          {{related_articles}}
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 Scripture for Anxiety. Built with care.</p>
+    </div>
+  </footer>
+
+  <script src="/script.js?v={{cache_bust}}" defer></script>
+</body>
+</html>

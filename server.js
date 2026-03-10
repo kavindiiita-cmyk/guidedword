@@ -10,6 +10,7 @@ const IS_VERCEL = !!process.env.VERCEL;
 async function start() {
   // Locate the WASM binary for sql.js
   const wasmPath = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+  if (!fs.existsSync(wasmPath)) throw new Error('WASM not found at ' + wasmPath);
   const SQL = await initSqlJs({
     locateFile: () => wasmPath
   });

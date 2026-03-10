@@ -11,9 +11,9 @@ async function start() {
   // Locate the WASM binary for sql.js
   const wasmPath = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
   if (!fs.existsSync(wasmPath)) throw new Error('WASM not found at ' + wasmPath);
-  const SQL = await initSqlJs({
-    locateFile: () => wasmPath
-  });
+  // Read WASM as buffer — more reliable on serverless platforms than locateFile
+  const wasmBinary = fs.readFileSync(wasmPath);
+  const SQL = await initSqlJs({ wasmBinary });
 
   // Source DB is always in the project root; writable copy goes to /tmp on Vercel
   const sourceDbPath = path.join(process.cwd(), 'database.db');

@@ -6,7 +6,7 @@
  * sitemap.xml using a streaming write so memory stays flat even with 31k+ verses.
  *
  * Usage:
- *   node generate-sitemap.js                        # defaults to http://localhost:3000
+ *   node generate-sitemap.js                        # defaults to https://theguidedword.org
  *   BASE_URL=https://bibleencouragement.com node generate-sitemap.js
  */
 
@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const BASE_URL = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/+$/, '');
+const BASE_URL = (process.env.BASE_URL || 'https://theguidedword.org').replace(/\/+$/, '');
 const BIBLE_JSON = path.join(__dirname, 'public', 'bible.json');
 const OUTPUT     = path.join(__dirname, 'sitemap.xml');
 

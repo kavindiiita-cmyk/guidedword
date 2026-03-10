@@ -5,11 +5,25 @@ const fs = require('fs');
 
 const app = express();
 const PORT = 3000;
+const IS_VERCEL = !!process.env.VERCEL;
 
 async function start() {
-  const SQL = await initSqlJs();
-  const dbPath = path.join(__dirname, 'database.db');
-  const buffer = fs.readFileSync(dbPath);
+  // Locate the WASM binary for sql.js
+  const wasmPath = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+  const SQL = await initSqlJs({
+    locateFile: () => wasmPath
+  });
+
+  // Source DB is always in the project root; writable copy goes to /tmp on Vercel
+  const sourceDbPath = path.join(process.cwd(), 'database.db');
+  const writableDbPath = IS_VERCEL ? path.join('/tmp', 'database.db') : sourceDbPath;
+
+  // On Vercel, copy the bundled DB to /tmp if it hasn't been copied yet
+  if (IS_VERCEL && !fs.existsSync(writableDbPath)) {
+    fs.copyFileSync(sourceDbPath, writableDbPath);
+  }
+
+  const buffer = fs.readFileSync(writableDbPath);
   const db = new SQL.Database(buffer);
 
   // Create prayer_requests table if not exists
@@ -20,17 +34,17 @@ async function start() {
     pray_count INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
   )`);
-  function saveDb() { fs.writeFileSync(dbPath, Buffer.from(db.export())); }
+  function saveDb() { fs.writeFileSync(writableDbPath, Buffer.from(db.export())); }
   saveDb();
 
   app.use(express.json());
-  app.use(express.static(path.join(__dirname, 'public'), { maxAge: 0 }));
+  app.use(express.static(path.join(process.cwd(), 'public'), { maxAge: 0 }));
 
   // Cache-bust hash: changes every server restart so browsers fetch fresh assets
   const CACHE_BUST = Date.now().toString(36);
 
-  const homeTemplate = fs.readFileSync(path.join(__dirname, 'views', 'home.html'), 'utf8');
-  const articleTemplate = fs.readFileSync(path.join(__dirname, 'views', 'article.html'), 'utf8');
+  const homeTemplate = fs.readFileSync(path.join(process.cwd(), 'views', 'home.html'), 'utf8');
+  const articleTemplate = fs.readFileSync(path.join(process.cwd(), 'views', 'article.html'), 'utf8');
 
   function escapeHtml(str) {
     return String(str)

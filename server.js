@@ -1,5 +1,6 @@
 const express = require('express');
-const initSqlJs = require('sql.js');
+// Use asm.js build of sql.js — no WASM file dependency, works on all serverless platforms
+const initSqlJs = require('sql.js/dist/sql-asm.js');
 const path = require('path');
 const fs = require('fs');
 
@@ -8,26 +9,7 @@ const PORT = 3000;
 const IS_VERCEL = !!process.env.VERCEL;
 
 async function start() {
-  // Locate the WASM binary — check project root first, then node_modules
-  const rootWasm = path.join(process.cwd(), 'sql-wasm.wasm');
-  const nmWasm = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
-  const sourceWasm = fs.existsSync(rootWasm) ? rootWasm : (fs.existsSync(nmWasm) ? nmWasm : null);
-
-  if (!sourceWasm) throw new Error('WASM not found at ' + rootWasm + ' or ' + nmWasm);
-
-  // On Vercel /var/task is read-only; copy WASM to /tmp so sql.js can load it
-  const tmpWasm = path.join('/tmp', 'sql-wasm.wasm');
-  if (IS_VERCEL && !fs.existsSync(tmpWasm)) {
-    fs.copyFileSync(sourceWasm, tmpWasm);
-    console.log('Copied WASM to', tmpWasm);
-  }
-
-  const wasmPath = IS_VERCEL ? tmpWasm : sourceWasm;
-  console.log('Loading WASM from', wasmPath);
-
-  const SQL = await initSqlJs({
-    locateFile: () => wasmPath
-  });
+  const SQL = await initSqlJs();
 
   // Source DB is always in the project root; writable copy goes to /tmp on Vercel
   const sourceDbPath = path.join(process.cwd(), 'database.db');

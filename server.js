@@ -9,13 +9,24 @@ const IS_VERCEL = !!process.env.VERCEL;
 
 async function start() {
   // Locate the WASM binary — prefer project-root copy (reliable on Vercel), fallback to node_modules
-  let wasmPath = path.join(process.cwd(), 'sql-wasm.wasm');
-  if (!fs.existsSync(wasmPath)) {
-    wasmPath = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+  const rootWasm = path.join(process.cwd(), 'sql-wasm.wasm');
+  const nmWasm = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+
+  // On Vercel, ensure the WASM exists where sql.js expects it (node_modules path)
+  if (fs.existsSync(rootWasm) && !fs.existsSync(nmWasm)) {
+    const destDir = path.dirname(nmWasm);
+    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+    fs.copyFileSync(rootWasm, nmWasm);
+    console.log('Copied WASM to', nmWasm);
   }
+
+  let wasmPath = fs.existsSync(rootWasm) ? rootWasm : nmWasm;
   if (!fs.existsSync(wasmPath)) throw new Error('WASM not found at ' + wasmPath);
-  // Read WASM as buffer — more reliable on serverless platforms than locateFile
-  const wasmBinary = fs.readFileSync(wasmPath);
+  console.log('Loading WASM from', wasmPath);
+
+  // Read WASM as ArrayBuffer — Emscripten requires ArrayBuffer, not Node Buffer
+  const buf = fs.readFileSync(wasmPath);
+  const wasmBinary = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
   const SQL = await initSqlJs({ wasmBinary });
 
   // Source DB is always in the project root; writable copy goes to /tmp on Vercel

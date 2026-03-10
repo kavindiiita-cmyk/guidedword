@@ -8,8 +8,11 @@ const PORT = 3000;
 const IS_VERCEL = !!process.env.VERCEL;
 
 async function start() {
-  // Locate the WASM binary for sql.js
-  const wasmPath = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+  // Locate the WASM binary — prefer project-root copy (reliable on Vercel), fallback to node_modules
+  let wasmPath = path.join(process.cwd(), 'sql-wasm.wasm');
+  if (!fs.existsSync(wasmPath)) {
+    wasmPath = path.join(process.cwd(), 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+  }
   if (!fs.existsSync(wasmPath)) throw new Error('WASM not found at ' + wasmPath);
   // Read WASM as buffer — more reliable on serverless platforms than locateFile
   const wasmBinary = fs.readFileSync(wasmPath);

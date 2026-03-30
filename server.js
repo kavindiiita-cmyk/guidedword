@@ -226,8 +226,11 @@ async function start() {
     return row ? row.total : 0;
   }
 
-  // Base URL helper (change for production)
-  const BASE_URL = process.env.BASE_URL || 'https://theguidedword.org';
+  // Base URL helper (safe for runtimes where process/env may be unavailable)
+  const BASE_URL =
+    (typeof process !== 'undefined' && process.env && process.env.BASE_URL)
+      ? process.env.BASE_URL
+      : 'https://theguidedword.org';
 
   // Homepage
   app.get('/', (req, res) => {

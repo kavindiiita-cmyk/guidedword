@@ -3,8 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <title>{{meta_title}}</title>
   <meta name="description" content="{{meta_description}}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/x-icon" href="{{base_url}}/favicon.ico">
+  <link rel="apple-touch-icon" href="{{base_url}}/apple-touch-icon.png">
   <link rel="canonical" href="{{canonical_url}}">
 
   <!-- Open Graph -->
@@ -62,6 +67,15 @@
   </header>
 
   <main class="container article-page">
+    <!-- Breadcrumb Navigation -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/">Home</a>
+      <span aria-hidden="true">&rsaquo;</span>
+      <a href="{{category_url}}">{{category_title}}</a>
+      <span aria-hidden="true">&rsaquo;</span>
+      <span>{{meta_title}}</span>
+    </nav>
+
     <nav class="pill-nav" aria-label="Topics">
       {{nav_pills}}
     </nav>

@@ -240,16 +240,25 @@ async function start() {
     res.send(html);
   });
 
-  // Verse deep-link — serves the same homepage but lets client-side JS pick up the slug
+  // Verse deep-link — redirect to the proper article URL for SEO
   app.get('/verse/:slug', (req, res) => {
-    const slug = req.params.slug;
-    const html = homeTemplate
-      .replace(/{{cache_bust}}/g, CACHE_BUST)
-      .replace(/{{base_url}}/g, BASE_URL)
-      .replace(/{{canonical_url}}/g, BASE_URL + '/verse/' + encodeURIComponent(slug))
-      .replace('{{prayer_html}}', buildPrayerHtml())
-      .replace('{{prayer_count}}', String(getTodayPrayerCount()));
-    res.send(html);
+    try {
+      const slug = req.params.slug;
+      const article = queryOne('SELECT slug FROM articles WHERE slug = ?', [slug]);
+      
+      if (!article) {
+        return res.status(410).send('Article no longer available'); // 410 Gone - cleaner than 404
+      }
+      
+      const cat = getCategoryForSlug(article.slug);
+      const articlePath = cat ? '/article/' + cat + '/' + article.slug : '/article/' + article.slug;
+      
+      // 301 redirect to canonical article URL
+      res.redirect(301, articlePath);
+    } catch (err) {
+      console.error('Error in /verse/:slug route:', err);
+      res.status(500).send('Internal Server Error');
+    }
   });
 
   // Friendly category aliases
@@ -291,19 +300,20 @@ async function start() {
   };
 
   app.get('/category/:cat', (req, res) => {
-    const cat = req.params.cat;
-    const config = categoryConfig[cat];
-    if (!config) return res.status(404).send('<h1>Category not found</h1>');
+    try {
+      const cat = req.params.cat;
+      const config = categoryConfig[cat];
+      if (!config) return res.status(404).send('<h1>Category not found</h1>');
 
-    const placeholders = config.slugs.map(() => '?').join(',');
-    const articles = queryAll(
-      `SELECT slug, title, meta_description, verse_reference FROM articles WHERE slug IN (${placeholders}) ORDER BY id`,
-      config.slugs
-    );
+      const placeholders = config.slugs.map(() => '?').join(',');
+      const articles = queryAll(
+        `SELECT slug, title, meta_description, verse_reference FROM articles WHERE slug IN (${placeholders}) ORDER BY id`,
+        config.slugs
+      );
 
-    let cards = '';
-    for (const a of articles) {
-      cards += `
+      let cards = '';
+      for (const a of articles) {
+        cards += `
         <a href="${articleUrl(a.slug)}" class="card">
           <div class="card-body">
             <span class="card-tag">${escapeHtml(a.verse_reference)}</span>
@@ -312,48 +322,53 @@ async function start() {
             <span class="card-link">Read More &rarr;</span>
           </div>
         </a>`;
-    }
-
-    // Internal links to other categories
-    let internalLinks = '<nav class="internal-links" aria-label="Explore more topics"><h3>Explore More Topics</h3><ul>';
-    for (const [key, info] of Object.entries(categoryUrlMap)) {
-      if (key !== cat) {
-        internalLinks += `<li><a href="${info.path}">${info.title}</a></li>`;
       }
-    }
-    internalLinks += '</ul></nav>';
 
-    // Breadcrumb items for JSON-LD
-    const breadcrumbLd = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Home", "item": BASE_URL + "/" },
-        { "@type": "ListItem", "position": 2, "name": config.title.replace(/&amp;/g, '&') }
-      ]
-    });
+      // Internal links to other categories
+      let internalLinks = '<nav class="internal-links" aria-label="Explore more topics"><h3>Explore More Topics</h3><ul>';
+      for (const [key, info] of Object.entries(categoryUrlMap)) {
+        if (key !== cat) {
+          internalLinks += `<li><a href="${info.path}">${info.title}</a></li>`;
+        }
+      }
+      internalLinks += '</ul></nav>';
 
-    // Article schema for category
-    const articleLd = JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "CollectionPage",
-      "headline": config.title.replace(/&amp;/g, '&'),
-      "description": config.desc.replace(/&amp;/g, '&'),
-      "author": { "@type": "Organization", "name": "Bible Encouragement" },
-      "publisher": { "@type": "Organization", "name": "Bible Encouragement", "logo": { "@type": "ImageObject", "url": BASE_URL + "/images/og-default.jpg" } },
-      "datePublished": "2026-01-01",
-      "mainEntityOfPage": BASE_URL + "/category/" + cat
-    });
+      // Breadcrumb items for JSON-LD
+      const breadcrumbLd = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": BASE_URL + "/" },
+          { "@type": "ListItem", "position": 2, "name": config.title.replace(/&amp;/g, '&') }
+        ]
+      });
 
-    const canonicalUrl = BASE_URL + '/category/' + cat;
+      // Article schema for category
+      const articleLd = JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "headline": config.title.replace(/&amp;/g, '&'),
+        "description": config.desc.replace(/&amp;/g, '&'),
+        "author": { "@type": "Organization", "name": "Bible Encouragement" },
+        "publisher": { "@type": "Organization", "name": "Bible Encouragement", "logo": { "@type": "ImageObject", "url": BASE_URL + "/images/og-default.jpg" } },
+        "datePublished": "2026-01-01",
+        "mainEntityOfPage": BASE_URL + "/category/" + cat
+      });
 
-    const html = `<!DOCTYPE html>
+      const canonicalUrl = BASE_URL + '/category/' + cat;
+
+      const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <title>${config.title} — Bible Encouragement</title>
   <meta name="description" content="${config.desc}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/x-icon" href="${BASE_URL}/favicon.ico">
+  <link rel="apple-touch-icon" href="${BASE_URL}/apple-touch-icon.png">
   <link rel="canonical" href="${canonicalUrl}">
   <meta property="og:type" content="website">
   <meta property="og:title" content="${config.title} — Bible Encouragement">
@@ -394,7 +409,11 @@ async function start() {
   <script src="/script.js?v=${CACHE_BUST}" defer></script>
 </body>
 </html>`;
-    res.send(html);
+      res.send(html);
+    } catch (err) {
+      console.error('Error in /category/:cat route:', err);
+      res.status(500).send('Internal Server Error');
+    }
   });
 
   // Article page
@@ -413,93 +432,106 @@ async function start() {
   }
 
   app.get('/article/:category/:slug', (req, res) => {
-    const slug = req.params.slug;
-    const article = queryOne('SELECT * FROM articles WHERE slug = ?', [slug]);
+    try {
+      const slug = req.params.slug;
+      const article = queryOne('SELECT * FROM articles WHERE slug = ?', [slug]);
 
-    if (!article) {
-      return res.status(404).send('<h1>Article not found</h1>');
-    }
+      if (!article) {
+        return res.status(404).send('<h1>Article not found</h1>');
+      }
 
-    // Only show related articles from the SAME category
-    const articleCatKey = getCategoryForSlug(article.slug);
-    const sameCategorySlugs = articleCatKey && categoryConfig[articleCatKey]
-      ? categoryConfig[articleCatKey].slugs.filter(s => s !== article.slug)
-      : [];
+      // Only show related articles from the SAME category
+      const articleCatKey = getCategoryForSlug(article.slug);
+      const sameCategorySlugs = articleCatKey && categoryConfig[articleCatKey]
+        ? categoryConfig[articleCatKey].slugs.filter(s => s !== article.slug)
+        : [];
 
-    let relatedHtml = '';
-    if (sameCategorySlugs.length) {
-      const placeholders = sameCategorySlugs.map(() => '?').join(',');
-      const relatedArticles = queryAll(
-        `SELECT slug, title, verse_reference FROM articles WHERE slug IN (${placeholders}) ORDER BY id`,
-        sameCategorySlugs
-      );
-      for (const r of relatedArticles) {
-        relatedHtml += `
+      let relatedHtml = '';
+      if (sameCategorySlugs.length) {
+        const placeholders = sameCategorySlugs.map(() => '?').join(',');
+        const relatedArticles = queryAll(
+          `SELECT slug, title, verse_reference FROM articles WHERE slug IN (${placeholders}) ORDER BY id`,
+          sameCategorySlugs
+        );
+        for (const r of relatedArticles) {
+          relatedHtml += `
         <a href="${articleUrl(r.slug)}" class="related-card">
           <span class="related-tag">${escapeHtml(r.verse_reference)}</span>
           <span class="related-title">${escapeHtml(r.title)}</span>
         </a>`;
+        }
       }
-    }
 
-    // Nav pills — only show articles from the same category
-    let navPills = '';
-    const catSlugsForNav = articleCatKey && categoryConfig[articleCatKey]
-      ? categoryConfig[articleCatKey].slugs
-      : [];
-    if (catSlugsForNav.length) {
-      const ph = catSlugsForNav.map(() => '?').join(',');
-      const navArticles = queryAll(`SELECT slug, verse_reference FROM articles WHERE slug IN (${ph}) ORDER BY id`, catSlugsForNav);
-      for (const n of navArticles) {
-        const active = n.slug === article.slug ? ' pill-active' : '';
-        navPills += `<a href="${articleUrl(n.slug)}" class="pill${active}">${escapeHtml(n.verse_reference)}</a>`;
+      // Nav pills — only show articles from the same category
+      let navPills = '';
+      const catSlugsForNav = articleCatKey && categoryConfig[articleCatKey]
+        ? categoryConfig[articleCatKey].slugs
+        : [];
+      if (catSlugsForNav.length) {
+        const ph = catSlugsForNav.map(() => '?').join(',');
+        const navArticles = queryAll(`SELECT slug, verse_reference FROM articles WHERE slug IN (${ph}) ORDER BY id`, catSlugsForNav);
+        for (const n of navArticles) {
+          const active = n.slug === article.slug ? ' pill-active' : '';
+          navPills += `<a href="${articleUrl(n.slug)}" class="pill${active}">${escapeHtml(n.verse_reference)}</a>`;
+        }
       }
+
+      // Reuse articleCatKey from related-articles block above
+      const catInfo = articleCatKey && categoryUrlMap[articleCatKey] ? categoryUrlMap[articleCatKey] : { title: 'Articles', path: '/' };
+
+      // Hero image per category (shared across all articles in the same category)
+      const categoryHeroMap = {
+        anxiety:  '/images/card-calm-soul.jpg',
+        peace:    '/images/card-finding-peace.jpg',
+        strength: '/images/card-strength.jpg',
+        healing:  '/images/card-healing.jpg'
+      };
+      const heroImage = (articleCatKey && categoryHeroMap[articleCatKey]) || '/images/' + article.slug + '-hero.jpg';
+
+      const html = articleTemplate
+        .replace(/{{cache_bust}}/g, CACHE_BUST)
+        .replace(/{{base_url}}/g, BASE_URL)
+        .replace(/{{canonical_url}}/g, BASE_URL + articleUrl(article.slug))
+        .replace(/{{hero_image}}/g, heroImage)
+        .replace(/{{category_title}}/g, catInfo.title)
+        .replace(/{{category_url}}/g, BASE_URL + catInfo.path)
+        .replace(/\{\{meta_title\}\}/g, escapeHtml(article.meta_title))
+        .replace(/\{\{meta_description\}\}/g, escapeHtml(article.meta_description))
+        .replace('{{nav_pills}}', navPills)
+        .replace('{{title}}', escapeHtml(article.title))
+        .replace(/\{\{verse_reference\}\}/g, escapeHtml(article.verse_reference))
+        .replace('{{story_context}}', escapeHtml(article.story_context))
+        .replace('{{verse_text}}', escapeHtml(article.verse_text))
+        .replace('{{reflection_text}}', escapeHtml(article.reflection_text))
+        .replace('{{quiz_question}}', escapeHtml(article.quiz_question))
+        .replace('{{option_a}}', escapeHtml(article.option_a))
+        .replace('{{option_b}}', escapeHtml(article.option_b))
+        .replace('{{option_c}}', escapeHtml(article.option_c))
+        .replace('{{option_d}}', escapeHtml(article.option_d))
+        .replace('{{correct_option}}', escapeHtml(article.correct_option))
+        .replace('{{quiz_explanation}}', escapeHtml(article.quiz_explanation))
+        .replace('{{related_articles}}', relatedHtml)
+        .replace(/\{\{slug\}\}/g, escapeHtml(article.slug));
+
+      res.send(html);
+    } catch (err) {
+      console.error('Error in /article/:category/:slug route:', err);
+      res.status(500).send('Internal Server Error');
     }
-
-    // Reuse articleCatKey from related-articles block above
-    const catInfo = articleCatKey && categoryUrlMap[articleCatKey] ? categoryUrlMap[articleCatKey] : { title: 'Articles', path: '/' };
-
-    // Hero image per category (shared across all articles in the same category)
-    const categoryHeroMap = {
-      anxiety:  '/images/card-calm-soul.jpg',
-      peace:    '/images/card-finding-peace.jpg',
-      strength: '/images/card-strength.jpg',
-      healing:  '/images/card-healing.jpg'
-    };
-    const heroImage = (articleCatKey && categoryHeroMap[articleCatKey]) || '/images/' + article.slug + '-hero.jpg';
-
-    const html = articleTemplate
-      .replace(/{{cache_bust}}/g, CACHE_BUST)
-      .replace(/{{base_url}}/g, BASE_URL)
-      .replace(/{{canonical_url}}/g, BASE_URL + articleUrl(article.slug))
-      .replace(/{{hero_image}}/g, heroImage)
-      .replace(/{{category_title}}/g, catInfo.title)
-      .replace(/{{category_url}}/g, BASE_URL + catInfo.path)
-      .replace(/\{\{meta_title\}\}/g, escapeHtml(article.meta_title))
-      .replace(/\{\{meta_description\}\}/g, escapeHtml(article.meta_description))
-      .replace('{{nav_pills}}', navPills)
-      .replace('{{title}}', escapeHtml(article.title))
-      .replace(/\{\{verse_reference\}\}/g, escapeHtml(article.verse_reference))
-      .replace('{{story_context}}', escapeHtml(article.story_context))
-      .replace('{{verse_text}}', escapeHtml(article.verse_text))
-      .replace('{{reflection_text}}', escapeHtml(article.reflection_text))
-      .replace('{{quiz_question}}', escapeHtml(article.quiz_question))
-      .replace('{{option_a}}', escapeHtml(article.option_a))
-      .replace('{{option_b}}', escapeHtml(article.option_b))
-      .replace('{{option_c}}', escapeHtml(article.option_c))
-      .replace('{{option_d}}', escapeHtml(article.option_d))
-      .replace('{{correct_option}}', escapeHtml(article.correct_option))
-      .replace('{{quiz_explanation}}', escapeHtml(article.quiz_explanation))
-      .replace('{{related_articles}}', relatedHtml)
-      .replace(/\{\{slug\}\}/g, escapeHtml(article.slug));
-
-    res.send(html);
   });
 
   // Robots.txt — dynamic so BASE_URL is correct
   app.get('/robots.txt', (req, res) => {
     res.type('text/plain');
-    res.send(`User-agent: *\nAllow: /\n\nSitemap: ${BASE_URL}/sitemap.xml`);
+    res.send(`User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /images/
+
+User-agent: Googlebot
+Allow: /
+
+Sitemap: ${BASE_URL}/sitemap.xml`);
   });
 
   // OG default image (simple SVG)
@@ -515,28 +547,33 @@ async function start() {
 
   // Dynamic sitemap
   app.get('/sitemap.xml', (req, res) => {
-    const articles = queryAll('SELECT slug FROM articles ORDER BY id');
+    try {
+      const articles = queryAll('SELECT slug FROM articles ORDER BY id');
 
-    let urls = `  <url><loc>${BASE_URL}/</loc><priority>1.0</priority><changefreq>daily</changefreq></url>\n`;
+      let urls = `  <url><loc>${BASE_URL}/</loc><priority>1.0</priority><changefreq>daily</changefreq></url>\n`;
 
-    // Category pages
-    for (const cat of Object.keys(categoryConfig)) {
-      urls += `  <url><loc>${BASE_URL}/category/${cat}</loc><priority>0.9</priority><changefreq>weekly</changefreq></url>\n`;
-    }
+      // Category pages
+      for (const cat of Object.keys(categoryConfig)) {
+        urls += `  <url><loc>${BASE_URL}/category/${cat}</loc><priority>0.9</priority><changefreq>weekly</changefreq></url>\n`;
+      }
 
-    // Article pages
-    for (const a of articles) {
-      const cat = getCategoryForSlug(a.slug);
-      const artPath = cat ? `/article/${cat}/${a.slug}` : `/article/${a.slug}`;
-      urls += `  <url><loc>${BASE_URL}${artPath}</loc><priority>0.8</priority><changefreq>monthly</changefreq></url>\n`;
-    }
+      // Article pages - only canonical URLs
+      for (const a of articles) {
+        const cat = getCategoryForSlug(a.slug);
+        const artPath = cat ? `/article/${cat}/${a.slug}` : `/article/${a.slug}`;
+        urls += `  <url><loc>${BASE_URL}${artPath}</loc><priority>0.8</priority><changefreq>monthly</changefreq><lastmod>${new Date().toISOString().split('T')[0]}</lastmod></url>\n`;
+      }
 
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}</urlset>`;
 
-    res.type('application/xml');
-    res.send(xml);
+      res.type('application/xml');
+      res.send(xml);
+    } catch (err) {
+      console.error('Error generating sitemap:', err);
+      res.status(500).type('application/xml').send('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+    }
   });
 
   // Global error handler — logs to console for Vercel dashboard visibility

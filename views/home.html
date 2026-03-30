@@ -3,9 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <title>Bible Encouragement — Find Comfort and Guidance in God's Word</title>
   <meta name="description" content="Discover inspiring Bible verses for anxiety, peace, strength, and guidance. Daily verse of the day, prayer requests, and comforting scripture for every season of life.">
   <meta name="theme-color" content="#1f3c88">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/x-icon" href="{{base_url}}/favicon.ico">
+  <link rel="apple-touch-icon" href="{{base_url}}/apple-touch-icon.png">
   <link rel="canonical" href="{{canonical_url}}">
 
   <!-- Open Graph -->
@@ -50,6 +55,15 @@
     "logo": "{{base_url}}/images/og-default.jpg"
   }
   </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "{{base_url}}/" }
+    ]
+  }
+  </script>
 </head>
 <body>
 
@@ -79,6 +93,11 @@
   </header>
 
   <main>
+
+    <!-- Breadcrumb Navigation (Home only shows "Home") -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <span>Home</span>
+    </nav>
 
     <!-- HERO WITH EMBEDDED CATEGORY GRID -->
     <section class="hero" aria-label="Welcome">
